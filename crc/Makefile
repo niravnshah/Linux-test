@@ -1,5 +1,5 @@
 hellomake:
-	gcc -g -o crc -O0 crc2.c
+	gcc -g -o crc -O0 crc_ref.c
 
 clean:
 	rm crc
