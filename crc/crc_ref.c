@@ -37,8 +37,8 @@ crc_t* crc_table_ref = crc_table_32_ref;
 
 // typedef uint64_t crc_t;
 // static crc_t poly = 0xad93d23594c93659;
-// uint8_t arr[] = {0xf5,0x94,0x26,0x1d,0x23, 0xf3,0x1d,0x78,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};//, 0xf5, 0x6f, 0x24, 0x1a, 0x32, 0x2d, 0x6a, 0x21};
-// static crc_t seed = 0x1234567890ABCDEF;
+// uint8_t arr[] = {0xf5,0x94,0x26,0x1d,0x23, 0xf3,0x1d,0x78,0x00};//, 0xf5, 0x6f, 0x24, 0x1a, 0x32, 0x2d, 0x6a, 0x21};
+// static crc_t seed = 0;
 // static int w = 16;
 // crc_t* crc_table = crc_table_64;
 // crc_t* crc_table_ref = crc_table_64_ref;
@@ -101,9 +101,9 @@ void generate_table()
 {
 	crc_t crc;
 	for( int i = 0; i < 256; i++ ) {
-		crc = i << BIT_WIDTH-8;
-		for( int i = 8; i > 0 ; i--) {
-			if( (crc & (1 << BIT_WIDTH-1)) != 0 ) {
+		crc = (crc_t)i << BIT_WIDTH-8;
+		for( int j = 8; j > 0 ; j--) {
+			if( (crc & ((crc_t)1 << BIT_WIDTH-1)) != 0 ) {
 				crc <<= 1;
 				crc ^= poly;
 			} else {
@@ -117,7 +117,7 @@ void generate_table()
 
 	for( int i = 0; i < 256; i++ ) {
 		crc = i;
-		for( int i = 8; i > 0 ; i--) {
+		for( int j = 8; j > 0 ; j--) {
 			if( crc & 1 != 0 ) {
 				crc >>= 1;
 				crc ^= reflect(poly);
@@ -160,17 +160,17 @@ crc_t get_result(crc_t in)
 
 crc_t findcrc(const uint8_t input[], const crc_t seed, const size_t nb_elements)
 {
-	ref_ip = 1;
-	ref_seed = 1;
-	ref_crc = 1;
-	inv_seed = 1;
-	inv_crc = 1;
+	ref_ip = 0;
+	ref_seed = 0;
+	ref_crc = 0;
+	inv_seed = 0;
+	inv_crc = 0;
 
 	crc_t crc = get_seed(seed);//input[0] << 24 | input[1] << 16 | input[2] << 8 | input[3];
 	int bit_w = BIT_WIDTH;
 	while( bit_w > 0 ) {
 		bit_w -= 8;
-		crc = crc ^ (get_input(*input) << bit_w);
+		crc = crc ^ ((crc_t)get_input(*input) << bit_w);
 		input++;
 		// printf("crc = %08x\n",crc);
 	}
@@ -179,7 +179,7 @@ crc_t findcrc(const uint8_t input[], const crc_t seed, const size_t nb_elements)
 		// printf("crc before %d iter = %0*lX\n", b, w,crc);
 		for( int i = 8-1; i >= 0 ; i--)
 		{
-			if( (crc & (1 << BIT_WIDTH-1)) != 0 ) {
+			if( (crc & ((crc_t)1 << BIT_WIDTH-1)) != 0 ) {
 				crc <<= 1;
 				crc |= (get_input(input[b]) & (1 << i)) ? 1 : 0;
 				crc ^= poly;
@@ -196,16 +196,16 @@ crc_t findcrc(const uint8_t input[], const crc_t seed, const size_t nb_elements)
 
 crc_t findcrc_ref(const uint8_t input[], const crc_t seed, const size_t nb_elements)
 {
-	ref_ip = 0;
-	ref_seed = 0;
-	ref_crc = 0;
-	inv_seed = 1;
-	inv_crc = 1;
+	ref_ip = 1;
+	ref_seed = 1;
+	ref_crc = 1;
+	inv_seed = 0;
+	inv_crc = 0;
 
 	crc_t crc = get_seed(seed);//input[3] << 24 | input[2] << 16 | input[1] << 8 | input[0];
 	int bit_w = 0;
 	while( bit_w < BIT_WIDTH ) {
-		crc = crc ^ (get_input(*input) << bit_w);
+		crc = crc ^ ((crc_t)get_input(*input) << bit_w);
 		bit_w += 8;
 		input++;
 	}
@@ -216,11 +216,11 @@ crc_t findcrc_ref(const uint8_t input[], const crc_t seed, const size_t nb_eleme
 		{
 			if( (crc & 1) != 0 ) {
 				crc >>= 1;
-				crc |= (get_input(input[b]) & (1 << i)) ? 1 << (BIT_WIDTH-1) : 0;
+				crc |= (get_input(input[b]) & (1 << i)) ? (crc_t)1 << (BIT_WIDTH-1) : 0;
 				crc ^= reflect(poly);
 			} else {
 				crc >>= 1;
-				crc |= (get_input(input[b]) & (1 << i)) ? 1 << (BIT_WIDTH-1) : 0;
+				crc |= (get_input(input[b]) & (1 << i)) ? (crc_t)1 << (BIT_WIDTH-1) : 0;
 			}
 		}
 		// printf("crc after %d iter = %0*lX\n", b, w,crc);
@@ -231,22 +231,22 @@ crc_t findcrc_ref(const uint8_t input[], const crc_t seed, const size_t nb_eleme
 
 crc_t findcrc2(const uint8_t input[], const crc_t seed, const size_t nb_elements)
 {
-	ref_ip = 1;
-	ref_seed = 1;
-	ref_crc = 1;
-	inv_seed = 1;
-	inv_crc = 1;
+	ref_ip = 0;
+	ref_seed = 0;
+	ref_crc = 0;
+	inv_seed = 0;
+	inv_crc = 0;
 
 	crc_t crc = get_seed(seed);
 
 	for( int b = 0; b < nb_elements; b++)
 	{
-		crc ^= get_input(input[b]) << (BIT_WIDTH - 8);
+		crc ^= (crc_t)get_input(input[b]) << (BIT_WIDTH - 8);
 		// printf("crc before %d iter = %0*lX\n", b+1,w, crc);
 
 		for( int i = 1; i <= 8 ; i++)
 		{
-			if( (crc & (1 << BIT_WIDTH-1)) != 0 ) {
+			if( (crc & ((crc_t)1 << BIT_WIDTH-1)) != 0 ) {
 				crc <<= 1;
 				crc ^= poly;
 			} else {
@@ -261,11 +261,11 @@ crc_t findcrc2(const uint8_t input[], const crc_t seed, const size_t nb_elements
 
 crc_t findcrc2_ref(const uint8_t input[], const crc_t seed, const size_t nb_elements)
 {
-	ref_ip = 0;
-	ref_seed = 0;
-	ref_crc = 0;
-	inv_seed = 1;
-	inv_crc = 1;
+	ref_ip = 1;
+	ref_seed = 1;
+	ref_crc = 1;
+	inv_seed = 0;
+	inv_crc = 0;
 
 	crc_t crc = get_seed(seed);
 
@@ -291,11 +291,11 @@ crc_t findcrc2_ref(const uint8_t input[], const crc_t seed, const size_t nb_elem
 
 crc_t findcrc_table(const uint8_t input[], const crc_t seed, const size_t nb_elements, crc_t* table)
 {
-	ref_ip = 1;
-	ref_seed = 1;
-	ref_crc = 1;
-	inv_seed = 1;
-	inv_crc = 1;
+	ref_ip = 0;
+	ref_seed = 0;
+	ref_crc = 0;
+	inv_seed = 0;
+	inv_crc = 0;
 
 	crc_t crc = get_seed(seed);
 
@@ -311,11 +311,11 @@ crc_t findcrc_table(const uint8_t input[], const crc_t seed, const size_t nb_ele
 
 crc_t findcrc_table_ref(const uint8_t input[], const crc_t seed, const size_t nb_elements, crc_t* table)
 {
-	ref_ip = 0;
-	ref_seed = 0;
-	ref_crc = 0;
-	inv_seed = 1;
-	inv_crc = 1;
+	ref_ip = 1;
+	ref_seed = 1;
+	ref_crc = 1;
+	inv_seed = 0;
+	inv_crc = 0;
 
 	crc_t crc = get_seed(seed);
 
@@ -334,17 +334,17 @@ int main(int argc, char** argv)
 {
 	generate_table();
 
-	crc_t mycrc = findcrc(arr, seed, 8);//(sizeof(arr)/sizeof(arr[0]))-1);
+	crc_t mycrc = findcrc(arr, seed, (sizeof(arr)/sizeof(arr[0]))-1);
 	printf("crc from crc  = %0*lX\n", w,mycrc);
-	crc_t mycrc_ref = findcrc_ref(arr, seed, 8);//(sizeof(arr)/sizeof(arr[0]))-1);
+	crc_t mycrc_ref = findcrc_ref(arr, seed, (sizeof(arr)/sizeof(arr[0]))-1);
 	printf("crc from crc ref  = %0*lX\n", w,mycrc_ref);
-	crc_t mycrc2 = findcrc2(arr, seed, 8);//(sizeof(arr)/sizeof(arr[0]))-1);
+	crc_t mycrc2 = findcrc2(arr, seed, (sizeof(arr)/sizeof(arr[0]))-1);
 	printf("crc from crc2 = %0*lX\n",w, mycrc2);
-	crc_t mycrc2_ref = findcrc2_ref(arr, seed, 8);//(sizeof(arr)/sizeof(arr[0]))-1);
+	crc_t mycrc2_ref = findcrc2_ref(arr, seed, (sizeof(arr)/sizeof(arr[0]))-1);
 	printf("crc from crc2 ref = %0*lX\n",w, mycrc2_ref);
-	crc_t mycrc3 = findcrc_table(arr, seed, 8, crc_table);// (sizeof(arr)/sizeof(arr[0]))-1,crc_table);
+	crc_t mycrc3 = findcrc_table(arr, seed, (sizeof(arr)/sizeof(arr[0]))-1, crc_table);
 	printf("crc from table = %0*lX\n",w, mycrc3);
-	crc_t mycrc3_ref = findcrc_table_ref(arr, seed, 8, crc_table_ref);// (sizeof(arr)/sizeof(arr[0]))-1,crc_table);
+	crc_t mycrc3_ref = findcrc_table_ref(arr, seed, (sizeof(arr)/sizeof(arr[0]))-1, crc_table_ref);
 	printf("crc from table ref = %0*lX\n",w, mycrc3_ref);
 
 	return 0;
